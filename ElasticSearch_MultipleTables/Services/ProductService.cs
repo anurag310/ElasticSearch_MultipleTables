@@ -1,8 +1,8 @@
 ﻿using ElasticSearch_MultipleTables.Data;
 using ElasticSearch_MultipleTables.Models;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Nest;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,6 +16,43 @@ public class ProductService
     {
         _dbContext = dbContext;
         _elasticClient = elasticClient;
+    }
+
+    // Initialize Elasticsearch by creating an index with mappings
+    public async Task InitializeElasticsearchAsync(IElasticClient client)
+    {
+        // Check if the index exists
+        var indexExistsResponse = await client.Indices.ExistsAsync("esmultipletable");
+
+        if (!indexExistsResponse.Exists)
+        {
+            // Create the index with mappings
+            var createIndexResponse = await client.Indices.CreateAsync("esmultipletable", c => c
+                .Map<ProductDocument>(m => m
+                    .AutoMap() // Automatically map properties
+                    .Properties(props => props
+                        .Text(t => t
+                            .Name(n => n.Name)
+                        )
+                        .Text(t => t
+                            .Name(n => n.Description)
+                        )
+                        .Text(t => t
+                            .Name(n => n.Category)
+                        )
+                        .Nested<ProductReview>(n => n
+                            .Name(r => r.Reviews)
+                            .AutoMap()
+                        )
+                    )
+                )
+            );
+
+            if (!createIndexResponse.IsValid)
+            {
+                throw new Exception($"Failed to create index: {createIndexResponse.OriginalException?.Message}");
+            }
+        }
     }
 
     // Index data from SQL Server to Elasticsearch
@@ -40,20 +77,21 @@ public class ProductService
                     Category = product.Category.Name,
                     Reviews = product.Reviews.ToList()
                 };
+
                 try
                 {
-
                     // Index the product document in Elasticsearch
                     var response = await _elasticClient.IndexDocumentAsync(productDocument);
+
                     if (!response.IsValid)
                     {
-
                         Console.WriteLine($"Failed to index product {product.Id}: {response.OriginalException?.Message}");
                         continue; // Skip the current product and move to the next
                     }
                 }
-                catch (Exception ex) {
-                    Console.WriteLine(ex.Message );
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
                 }
             }
 
