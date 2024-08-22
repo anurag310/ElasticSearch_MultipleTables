@@ -17,8 +17,8 @@ public class ProductController : ControllerBase
     [HttpPost("index")]
     public async Task<IActionResult> IndexProducts()
     {
-        await _productService.IndexProductsAsync();
-        return Ok("Data indexed successfully.");
+        var indexResults = await _productService.IndexProductsAsync();
+        return Ok(indexResults);
     }
 
     [HttpGet("search")]

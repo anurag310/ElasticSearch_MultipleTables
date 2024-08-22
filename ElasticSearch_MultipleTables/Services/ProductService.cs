@@ -56,8 +56,10 @@ public class ProductService
     }
 
     // Index data from SQL Server to Elasticsearch
-    public async Task IndexProductsAsync()
+    public async Task<List<IndexResult>> IndexProductsAsync()
     {
+        var results = new List<IndexResult>();
+
         try
         {
             var products = await _dbContext.Products
@@ -67,42 +69,64 @@ public class ProductService
 
             foreach (var product in products)
             {
-                // Map the product entity to the ProductDocument
                 var productDocument = new ProductDocument
                 {
                     Id = product.Id,
                     Name = product.Name,
                     Description = product.Description,
                     Price = product.Price,
-                    Category = product.Category.Name,
-                    Reviews = product.Reviews.ToList()
+                    Category = product.Category?.Name,
+                    Reviews = product.Reviews?.Select(r => new ProductReview
+                    {
+                        Id = r.Id,
+                        ProductId = r.ProductId,
+                        ReviewText = r.ReviewText,
+                        Rating = r.Rating
+                    }).ToList()
                 };
 
                 try
                 {
-                    // Index the product document in Elasticsearch
                     var response = await _elasticClient.IndexDocumentAsync(productDocument);
 
-                    if (!response.IsValid)
+                    if (response.IsValid)
                     {
-                        Console.WriteLine($"Failed to index product {product.Id}: {response.OriginalException?.Message}");
-                        continue; // Skip the current product and move to the next
+                        results.Add(new IndexResult
+                        {
+                            ProductId = product.Id,
+                            Success = true,
+                            Message = "Indexed successfully."
+                        });
+                    }
+                    else
+                    {
+                        results.Add(new IndexResult
+                        {
+                            ProductId = product.Id,
+                            Success = false,
+                            Message = response.OriginalException?.Message ?? "Unknown error"
+                        });
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    results.Add(new IndexResult
+                    {
+                        ProductId = product.Id,
+                        Success = false,
+                        Message = ex.Message
+                    });
                 }
             }
-
-            Console.WriteLine("All products indexed successfully.");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"An error occurred while indexing products: {ex.Message}");
         }
-    }
 
+        Console.WriteLine("Indexing operation completed.");
+        return results;
+    }
     // Search products in Elasticsearch
     public async Task<IEnumerable<Product>> SearchProductsAsync(string searchTerm)
     {
