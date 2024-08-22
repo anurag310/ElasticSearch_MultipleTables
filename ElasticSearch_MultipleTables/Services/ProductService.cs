@@ -128,21 +128,27 @@ public class ProductService
         return results;
     }
     // Search products in Elasticsearch
-    public async Task<IEnumerable<Product>> SearchProductsAsync(string searchTerm)
+    public async Task<IEnumerable<ProductDocument>> SearchProductsAsync(string searchTerm)
     {
-        var searchResponse = await _elasticClient.SearchAsync<Product>(s => s
+        var searchResponse = await _elasticClient.SearchAsync<ProductDocument>(s => s
             .Query(q => q
                 .MultiMatch(m => m
                     .Fields(f => f
                         .Field(p => p.Name)
                         .Field(p => p.Description)
-                        .Field(p => p.Category.Name)
-                        .Field(p => p.Reviews.Select(r => r.ReviewText)))
+                        .Field(p => p.Category))
                     .Query(searchTerm)
                 )
             )
         );
 
+        if (!searchResponse.IsValid)
+        {
+            Console.WriteLine($"Search failed: {searchResponse.OriginalException?.Message}");
+            return Enumerable.Empty<ProductDocument>();
+        }
+
         return searchResponse.Documents;
     }
+
 }
