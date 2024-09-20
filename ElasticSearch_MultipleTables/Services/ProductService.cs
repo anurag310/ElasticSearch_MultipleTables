@@ -11,13 +11,11 @@ public class ProductService
 {
     private readonly ProductDbContext _dbContext;
     private readonly IElasticClient _elasticClient;
-
     public ProductService(ProductDbContext dbContext, IElasticClient elasticClient)
     {
         _dbContext = dbContext;
         _elasticClient = elasticClient;
     }
-
     // Initialize Elasticsearch by creating an index with mappings
     public async Task InitializeElasticsearchAsync(IElasticClient client)
     {
@@ -147,8 +145,6 @@ public class ProductService
             Console.WriteLine($"Search failed: {searchResponse.OriginalException?.Message}");
             return Enumerable.Empty<ProductDocument>();
         }
-
         return searchResponse.Documents;
     }
-
 }

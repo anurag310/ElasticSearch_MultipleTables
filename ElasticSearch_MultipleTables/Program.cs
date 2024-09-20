@@ -12,11 +12,9 @@ builder.Services.AddDbContext<ProductDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configure Elasticsearch
-var settings = new ConnectionSettings(new Uri("https://172.19.80.1:9200/"))
-    .DefaultIndex("esmultipletable")
-    .ServerCertificateValidationCallback(CertificateValidations.AllowAll)
-    .BasicAuthentication("elastic", "Mn0F3LH2ikE4KkMYMdqT")
-    .RequestTimeout(TimeSpan.FromMinutes(2));
+var settings = new ConnectionSettings(new Uri("https://10.8.18.105:9200/"))
+        .DefaultIndex("products").ServerCertificateValidationCallback(CertificateValidations.AllowAll)
+        .BasicAuthentication("elastic", "bm5MpO2w6J8lzIaMQoBA").RequestTimeout(TimeSpan.FromMinutes(2));
 
 var client = new ElasticClient(settings);
 builder.Services.AddSingleton<IElasticClient>(client);
